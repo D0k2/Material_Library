@@ -211,6 +211,23 @@ class Material:
     def get_name(self):
         return self.data.get("metadata", {}).get("name_material_standard", "Без имени")
 
+    def get_display_name(self):
+        """Возвращает форматированное имя для отображения: 'Стандартное (альт1, альт2)'."""
+        meta = self.data.get("metadata", {})
+        standard_name = meta.get("name_material_standard", "Без имени")
+        alternatives = meta.get("name_material_alternative", [])
+
+        # Формируем строку только если есть альтернативные названия
+        if alternatives:
+            # Убираем пустые строки на случай, если они есть в JSON
+            valid_alternatives = [alt.strip() for alt in alternatives if alt.strip()]
+            if valid_alternatives:
+                alternatives_str = ", ".join(valid_alternatives)
+                return f"{standard_name} ({alternatives_str})"
+
+        # Если альтернативных имен нет, возвращаем только стандартное
+        return standard_name
+
     @staticmethod
     def get_empty_structure():
         """Возвращает пустой шаблон для нового материала."""
@@ -289,7 +306,7 @@ class AppData:
                     self.materials.append(Material(filepath=filepath))
                 except Exception as e:
                     print(f"Ошибка загрузки файла {filename}: {e}")
-        self.materials.sort(key=lambda m: m.get_name())
+        self.materials.sort(key=lambda m: m.get_display_name())
         # Вызов load_application_areas остается здесь
         self.load_application_areas()
 
@@ -476,7 +493,7 @@ class TempSelectionTab(ttk.Frame):
             if strength_categories:
                 # Если есть категории, создаем по строке на каждую
                 for category in strength_categories:
-                    row_data = {"material_name": mat.get_name(), "obj": mat}
+                    row_data = {"material_name": mat.get_display_name(), "obj": mat}
                     row_data["strength_category"] = category.get("value_strength_category", "N/A")
 
                     # Добавляем общие физические свойства
@@ -490,7 +507,7 @@ class TempSelectionTab(ttk.Frame):
                     self.treeview_data.append(row_data)
             else:
                 # Если категорий нет, создаем ОДНУ строку для материала
-                row_data = {"material_name": mat.get_name(), "obj": mat}
+                row_data = {"material_name": mat.get_display_name(), "obj": mat}
                 row_data["strength_category"] = "-"  # Заглушка для категории
 
                 # Добавляем физические свойства
@@ -854,7 +871,7 @@ class ChemComparisonTab(ttk.Frame):
             # Условие сработает, если chemical_properties существует и список composition не пустой
             if mat.data.get("chemical_properties", {}).get("composition"):
                 # Если обе проверки пройдены, добавляем материал в список
-                self.mat_listbox.insert(tk.END, mat.get_name())
+                self.mat_listbox.insert(tk.END, mat.get_display_name())
 
         # После заполнения списка обновляем вид сравнения
         self._setup_comparison_view()
@@ -877,14 +894,14 @@ class ChemComparisonTab(ttk.Frame):
         self.filter_entries.clear()
         self.all_composition_data.clear()
         selected_mats = [m for m in self.app_data.materials if
-                         m.get_name() in [self.mat_listbox.get(i) for i in self.mat_listbox.curselection()]]
+                         m.get_display_name() in [self.mat_listbox.get(i) for i in self.mat_listbox.curselection()]]
         if not selected_mats: return
         all_elements = set()
         for mat in selected_mats:
             for comp in mat.data.get("chemical_properties", {}).get("composition", []):
                 elements_map = {elem['element']: elem for elem in comp.get("other_elements", [])}
                 self.all_composition_data.append({
-                    "material_name": mat.get_name(),
+                    "material_name": mat.get_display_name(),
                     "source": comp.get("composition_source", "") + (
                         f' ({comp.get("composition_subsource")})' if comp.get("composition_subsource") else ""),
                     "base_element": comp.get("base_element", "-"),
@@ -1049,12 +1066,12 @@ class EditorFrame(ttk.Frame):
         self.notebook.add(self.chem_tab, text="Химический состав", state="disabled")
 
     def update_view(self):
-        mat_names = [m.get_name() for m in self.app_data.materials]
+        mat_names = [m.get_display_name() for m in self.app_data.materials]
         self.mat_combo.config(values=mat_names)
 
         # Если текущий редактируемый материал все еще в списке, оставляем его
-        if self.editing_copy and self.editing_copy.get_name() in mat_names:
-            self.mat_combo.set(self.editing_copy.get_name())
+        if self.editing_copy and self.editing_copy.get_display_name() in mat_names:
+            self.mat_combo.set(self.editing_copy.get_display_name())
         else:
             # Сбрасываем все, если материала нет или он был удален
             self.editing_copy = None
@@ -1065,7 +1082,7 @@ class EditorFrame(ttk.Frame):
 
     def load_material(self, event=None):
         selected_name = self.mat_combo.get()
-        material = next((m for m in self.app_data.materials if m.get_name() == selected_name), None)
+        material = next((m for m in self.app_data.materials if m.get_display_name() == selected_name), None)
         if material:
             self.app_data.current_material = material
             # Создаем ГЛУБОКУЮ КОПИЮ для безопасного редактирования
@@ -1983,7 +2000,7 @@ class SourcesManagerTab(ttk.Frame):
         unique_entries = set()  # Используем set для автоматического удаления дубликатов
 
         for mat in self.app_data.materials:
-            mat_name = mat.get_name()
+            mat_name = mat.get_display_name()
             app_areas = ", ".join(mat.data.get("metadata", {}).get("application_area", []))
 
             # Вспомогательная функция для добавления уникальной записи
@@ -2120,7 +2137,7 @@ class SourcesManagerTab(ttk.Frame):
                     mat.save()
                     modified_files_count += 1
                 except Exception as e:
-                    messagebox.showerror("Ошибка", f"Не удалось сохранить материал {mat.get_name()}: {e}")
+                    messagebox.showerror("Ошибка", f"Не удалось сохранить материал {mat.get_display_name()}: {e}")
                     return
 
         messagebox.showinfo("Завершено", f"Замена выполнена. Изменено файлов: {modified_files_count}.")
@@ -2219,7 +2236,7 @@ class MainApplication(tk.Tk):
         if original_material:
             # Сравниваем старые данные с новыми
             changes = find_changes(original_material.data, material_to_save.data)
-            log_changes(material_to_save.get_name(), changes)
+            log_changes(material_to_save.get_display_name(), changes)
         # --- ЛОГИРОВАНИЕ: КОНЕЦ ---
 
         if not material_to_save.filepath:
@@ -2227,7 +2244,7 @@ class MainApplication(tk.Tk):
         else:
             try:
                 material_to_save.save()
-                messagebox.showinfo("Успех", f"Материал '{material_to_save.get_name()}' сохранен.")
+                messagebox.showinfo("Успех", f"Материал '{material_to_save.get_display_name()}' сохранен.")
                 self.app_data.load_materials_from_dir(self.app_data.work_dir)
                 self.on_data_load()
             except Exception as e:
@@ -2238,14 +2255,12 @@ class MainApplication(tk.Tk):
         self.editor_frame.collect_data()
         material_to_save = self.editor_frame.editing_copy
 
-        # --- ЛОГИРОВАНИЕ: НАЧАЛО ---
         original_material = self.app_data.current_material
         if original_material:
             # Для "Сохранить как..." тоже логируем изменения относительно оригинала
             changes = find_changes(original_material.data, material_to_save.data)
-            log_changes(f"{material_to_save.get_name()} (сохранен из {original_material.get_name()})", changes)
+            log_changes(f"{material_to_save.get_display_name()} (сохранен из {original_material.get_display_name()})", changes)
         else:
-            # --- ИЗМЕНЕННЫЙ БЛОК ДЛЯ НОВОГО МАТЕРИАЛА ---
             # Получаем пустую структуру, чтобы сравнить с ней то, что ввел пользователь
             empty_material_data = Material.get_empty_structure()
 
@@ -2253,8 +2268,7 @@ class MainApplication(tk.Tk):
             changes = find_changes(empty_material_data, material_to_save.data)
 
             # Добавляем заголовок, чтобы было понятно, что это создание
-            log_changes(material_to_save.get_name(), ["Создан новый материал со следующими данными:"] + changes)
-        # --- ЛОГИРОВАНИЕ: КОНЕЦ ---
+            log_changes(material_to_save.get_display_name(), ["Создан новый материал со следующими данными:"] + changes)
 
         initial_name = material_to_save.get_name().replace(" ", "_") + ".json"
         new_filepath = filedialog.asksaveasfilename(
