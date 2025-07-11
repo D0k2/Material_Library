@@ -1445,15 +1445,16 @@ class MechanicalPropertiesTab(ttk.Frame):
         self._setup_widgets()
 
     def _on_mousewheel(self, event, widget):
+        # Эта функция для прокрутки, без изменений
         if event.num == 4 or event.delta > 0:
             widget.yview_scroll(-1, "units")
         elif event.num == 5 or event.delta < 0:
             widget.yview_scroll(1, "units")
 
     def _setup_widgets(self):
+        # --- Верхняя панель с выбором категории ---
         top_frame = ttk.Frame(self)
         top_frame.pack(fill="x", pady=(0, 10))
-        # ... (код для top_frame без изменений)
         ttk.Label(top_frame, text="Категория прочности:").pack(side="left", padx=(0, 5))
         self.category_combo = ttk.Combobox(top_frame, state="readonly", width=40)
         self.category_combo.pack(side="left", fill="x", expand=True)
@@ -1461,31 +1462,31 @@ class MechanicalPropertiesTab(ttk.Frame):
         ttk.Button(top_frame, text="+", width=3, command=self._add_category).pack(side="left", padx=5)
         ttk.Button(top_frame, text="-", width=3, command=self._delete_category).pack(side="left")
 
+        # --- Основной контейнер для полей редактора (изначально скрыт) ---
         self.editor_content_frame = ttk.Frame(self)
-        self.editor_content_frame.pack(fill="both", expand=True)
-        self.editor_content_frame.pack_forget()
+        # pack() будет вызван в populate_form, когда появятся данные
 
+        # --- Поле для названия категории ---
         name_frame = ttk.Frame(self.editor_content_frame)
         name_frame.pack(fill="x", pady=5)
         ttk.Label(name_frame, text="Название категории:").pack(side="left")
         self.category_name_entry = ttk.Entry(name_frame)
         self.category_name_entry.pack(side="left", fill="x", expand=True, padx=5)
 
+        # --- Прокручиваемая область для всех свойств ---
         prop_canvas = tk.Canvas(self.editor_content_frame)
         scrollbar = ttk.Scrollbar(self.editor_content_frame, orient="vertical", command=prop_canvas.yview)
         scrollable_frame = ttk.Frame(prop_canvas)
-
         scrollable_frame.bind("<Configure>", lambda e: prop_canvas.configure(scrollregion=prop_canvas.bbox("all")))
         prop_canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
         prop_canvas.configure(yscrollcommand=scrollbar.set)
-
         on_scroll = lambda e: self._on_mousewheel(e, prop_canvas)
         prop_canvas.bind("<MouseWheel>", on_scroll)
         scrollable_frame.bind("<MouseWheel>", on_scroll)
-
         prop_canvas.pack(side="left", fill="both", expand=True)
         scrollbar.pack(side="right", fill="y")
 
+        # --- Создание виджетов для каждого механического свойства ---
         for prop_key, prop_info in MECHANICAL_PROPERTIES_MAP.items():
             frame = ttk.LabelFrame(scrollable_frame, text=f"{prop_info['name']} ({prop_info['symbol']})", padding=10)
             frame.pack(fill="x", expand=True, padx=10, pady=5)
@@ -1493,9 +1494,9 @@ class MechanicalPropertiesTab(ttk.Frame):
 
             content_frame = ttk.Frame(frame)
             content_frame.pack(fill="both", expand=True)
-            left_panel = ttk.Frame(content_frame);
+            left_panel = ttk.Frame(content_frame)
             left_panel.pack(side="left", fill="y", padx=(0, 10))
-            right_panel = ttk.Frame(content_frame);
+            right_panel = ttk.Frame(content_frame)
             right_panel.pack(side="right", fill="both", expand=True)
 
             update_callback = lambda p_key=prop_key: self.update_mech_graph(p_key)
@@ -1509,6 +1510,7 @@ class MechanicalPropertiesTab(ttk.Frame):
 
             self.prop_widgets[prop_key] = widgets
 
+        # --- Создание виджетов для твердости ---
         hardness_frame = ttk.LabelFrame(scrollable_frame, text="Твердость (Hardness)", padding=10)
         hardness_frame.pack(fill="x", expand=True, padx=10, pady=5)
         hardness_frame.bind("<MouseWheel>", on_scroll)
@@ -1517,15 +1519,17 @@ class MechanicalPropertiesTab(ttk.Frame):
     def _create_prop_fields_for_editor(self, parent_frame, on_update_callback):
         parent_frame.columnconfigure(1, weight=1)
         widgets = {}
-        # ... (поля source, subsource, comment без изменений) ...
+
         ttk.Label(parent_frame, text="Источник:").grid(row=0, column=0, sticky="w", pady=2)
-        widgets["source"] = ttk.Entry(parent_frame);
+        widgets["source"] = ttk.Entry(parent_frame)
         widgets["source"].grid(row=0, column=1, columnspan=2, sticky="we")
+
         ttk.Label(parent_frame, text="Под-источник:").grid(row=1, column=0, sticky="w", pady=2)
-        widgets["subsource"] = ttk.Entry(parent_frame);
+        widgets["subsource"] = ttk.Entry(parent_frame)
         widgets["subsource"].grid(row=1, column=1, columnspan=2, sticky="we")
+
         ttk.Label(parent_frame, text="Комментарий:").grid(row=2, column=0, sticky="w", pady=2)
-        widgets["comment"] = ttk.Entry(parent_frame);
+        widgets["comment"] = ttk.Entry(parent_frame)
         widgets["comment"].grid(row=2, column=1, columnspan=2, sticky="we")
 
         table_frame = ttk.Frame(parent_frame)
@@ -1552,11 +1556,11 @@ class MechanicalPropertiesTab(ttk.Frame):
         return widgets
 
     def _create_hardness_table(self, parent_frame):
-        # Эта функция остается без изменений
         parent_frame.columnconfigure(0, weight=1)
         table_frame = ttk.Frame(parent_frame)
         table_frame.pack(fill="both", expand=True)
         table_frame.columnconfigure(0, weight=1)
+
         tree = create_editable_treeview(table_frame)
         tree["columns"] = ("source", "subsource", "min", "max", "unit")
         tree.heading("source", text="Источник");
@@ -1570,7 +1574,8 @@ class MechanicalPropertiesTab(ttk.Frame):
         tree.heading("unit", text="Ед. изм.");
         tree.column("unit", width=60)
         tree.pack(side="left", fill="both", expand=True)
-        btn_frame = ttk.Frame(table_frame);
+
+        btn_frame = ttk.Frame(table_frame)
         btn_frame.pack(side="left", fill="y", padx=5)
         ttk.Button(btn_frame, text="+", width=2,
                    command=lambda: tree.insert("", "end", values=["", "", "", "", ""])).pack(pady=2)
@@ -1582,16 +1587,15 @@ class MechanicalPropertiesTab(ttk.Frame):
         widgets = self.prop_widgets.get(prop_key)
         if not widgets: return
 
-        tree = widgets['tree']
-        ax = widgets['ax']
-        canvas = widgets['canvas']
-
+        tree, ax, canvas, fig = widgets['tree'], widgets['ax'], widgets['canvas'], widgets['fig']
         points = []
         for item_id in tree.get_children():
             values = tree.set(item_id)
             try:
-                points.append((float(values["temp"]), float(values["value"])))
-            except (ValueError, KeyError):
+                temp = float(values.get("temp", 0))
+                val = float(values.get("value", 0))
+                points.append((temp, val))
+            except (ValueError, KeyError, TypeError):
                 continue
 
         points.sort(key=lambda p: p[0])
@@ -1608,11 +1612,11 @@ class MechanicalPropertiesTab(ttk.Frame):
         ax.set_ylabel(f"{prop_info['unit']}", fontsize=8)
         ax.grid(True, linestyle='--', alpha=0.6)
         ax.tick_params(axis='both', which='major', labelsize=8)
-        widgets['fig'].tight_layout(pad=0.5)
-
+        fig.tight_layout(pad=0.5)
         canvas.draw()
 
     def _populate_category_fields(self, category_data):
+        """Заполняет все поля формы данными из указанной категории."""
         self.category_name_entry.delete(0, tk.END)
         self.category_name_entry.insert(0, category_data.get("value_strength_category", ""))
 
@@ -1629,7 +1633,8 @@ class MechanicalPropertiesTab(ttk.Frame):
             for i in tree.get_children(): tree.delete(i)
             for temp, val in prop_data.get("temperature_value_pairs", []):
                 tree.insert("", "end", values=[temp, val])
-            # Обновляем график для этого свойства
+
+            # КЛЮЧЕВОЕ ИСПРАВЛЕНИЕ: Обновляем график после заполнения таблицы.
             self.update_mech_graph(prop_key)
 
         for i in self.hardness_tree.get_children(): self.hardness_tree.delete(i)
@@ -1640,94 +1645,65 @@ class MechanicalPropertiesTab(ttk.Frame):
             ])
 
     def populate_form(self, material):
-        """Заполняет вкладку данными из указанного материала."""
-        # 1. Если до этого был открыт другой материал, сохраняем его текущие данные.
+        """Заполняет всю вкладку данными из указанного материала."""
         if self.material and self.material != material:
             self._save_current_category()
 
-        # 2. Устанавливаем новый материал и сбрасываем индекс текущей категории.
-        #    Сброс индекса важен, чтобы избежать логических ошибок.
         self.material = material
         self.current_category_idx = -1
 
-        # 3. Получаем список категорий из данных нового материала.
         categories = material.data.get("mechanical_properties", {}).get("strength_category", [])
         category_names = [cat.get("value_strength_category", f"Категория {i + 1}") for i, cat in enumerate(categories)]
         self.category_combo["values"] = category_names
 
-        # 4. Обрабатываем случай, когда у материала есть категории.
         if categories:
-            # Устанавливаем индекс и выбираем первую категорию в комбобоксе
-            self.current_category_idx = 0
-            self.category_combo.current(0)
-
-            # Получаем данные первой категории
-            first_category_data = categories[0]
-
-            # Напрямую вызываем метод для заполнения полей, минуя _on_category_select
-            self._populate_category_fields(first_category_data)
-
-            # Показываем фрейм с полями редактирования
             self.editor_content_frame.pack(fill="both", expand=True)
+            self.category_combo.current(0)
+            self._on_category_select()
         else:
-            # 5. Если категорий нет, очищаем комбобокс и скрываем фрейм редактирования.
             self.category_combo.set("")
             self.editor_content_frame.pack_forget()
 
     def _on_category_select(self, event=None):
-        self._save_current_category()
+        """Обработчик выбора категории в combobox."""
+        new_idx = self.category_combo.current()
+        if new_idx == -1: return
 
-        idx = self.category_combo.current()
-        if idx == -1: return
-        self.current_category_idx = idx
+        # Сохраняем данные предыдущей категории, только если она была выбрана и это не она же
+        if self.current_category_idx != -1 and self.current_category_idx != new_idx:
+            self._save_current_category()
 
-        category_data = self.material.data["mechanical_properties"]["strength_category"][idx]
+        self.current_category_idx = new_idx
+        category_data = self.material.data["mechanical_properties"]["strength_category"][self.current_category_idx]
         self._populate_category_fields(category_data)
         self.editor_content_frame.pack(fill="both", expand=True)
-
-    def _populate_category_fields(self, category_data):
-        self.category_name_entry.delete(0, tk.END)
-        self.category_name_entry.insert(0, category_data.get("value_strength_category", ""))
-
-        for prop_key, widgets in self.prop_widgets.items():
-            prop_data = category_data.get(prop_key, {})
-            widgets["source"].delete(0, tk.END)
-            widgets["source"].insert(0, prop_data.get("property_source", ""))
-            widgets["subsource"].delete(0, tk.END)
-            widgets["subsource"].insert(0, prop_data.get("property_subsource", ""))
-            widgets["comment"].delete(0, tk.END)
-            widgets["comment"].insert(0, prop_data.get("comment", ""))
-            for i in widgets["tree"].get_children(): widgets["tree"].delete(i)
-            for temp, val in prop_data.get("temperature_value_pairs", []):
-                widgets["tree"].insert("", "end", values=[temp, val])
-
-        for i in self.hardness_tree.get_children(): self.hardness_tree.delete(i)
-        for h_data in category_data.get("hardness", []):
-            self.hardness_tree.insert("", "end", values=[
-                h_data.get("property_source", ""), h_data.get("property_subsource", ""),
-                h_data.get("min_value", ""), h_data.get("max_value", ""), h_data.get("unit_value", "")
-            ])
 
     def _add_category(self):
         if not self.material: return
         self._save_current_category()
-        new_category = {"value_strength_category": "Новая категория", "hardness": []}
+
+        new_category_name = f"Новая категория {len(self.category_combo['values']) + 1}"
+        new_category = {"value_strength_category": new_category_name, "hardness": []}
 
         if "mechanical_properties" not in self.material.data:
             self.material.data["mechanical_properties"] = {"strength_category": []}
 
         categories = self.material.data["mechanical_properties"]["strength_category"]
         categories.append(new_category)
-        self.populate_form(self.material)
+
+        current_values = list(self.category_combo['values'])
+        current_values.append(new_category_name)
+        self.category_combo['values'] = current_values
         self.category_combo.current(len(categories) - 1)
         self._on_category_select()
 
     def _delete_category(self):
         if not self.material or self.current_category_idx == -1: return
+
         if messagebox.askyesno("Подтверждение", "Вы уверены, что хотите удалить эту категорию прочности?"):
             categories = self.material.data["mechanical_properties"]["strength_category"]
             del categories[self.current_category_idx]
-            self.category_combo.set("")
+            self.current_category_idx = -1  # Сбрасываем индекс
             self.populate_form(self.material)
 
     def _save_current_category(self):
@@ -1738,7 +1714,13 @@ class MechanicalPropertiesTab(ttk.Frame):
         except (KeyError, IndexError):
             return
 
-        category_data["value_strength_category"] = self.category_name_entry.get()
+        new_name = self.category_name_entry.get()
+        category_data["value_strength_category"] = new_name
+
+        # Обновляем имя в выпадающем списке
+        category_names = list(self.category_combo['values'])
+        category_names[self.current_category_idx] = new_name
+        self.category_combo['values'] = category_names
 
         for prop_key, widgets in self.prop_widgets.items():
             pairs = []
@@ -1746,58 +1728,52 @@ class MechanicalPropertiesTab(ttk.Frame):
                 values = widgets["tree"].set(item_id)
                 try:
                     pairs.append([float(values["temp"]), float(values["value"])])
-                except (ValueError, KeyError):
+                except (ValueError, KeyError, TypeError):
                     continue
-
-            source = widgets["source"].get()
-            subsource = widgets["subsource"].get()
+            source = widgets["source"].get();
+            subsource = widgets["subsource"].get();
             comment = widgets["comment"].get()
 
             if pairs or source or subsource or comment:
-                # Получаем существующий словарь свойства или создаем новый
                 prop_data = category_data.setdefault(prop_key, {})
-
-                # Обновляем только редактируемые поля
                 prop_data["property_source"] = source
                 prop_data["property_subsource"] = subsource
                 prop_data["comment"] = comment
                 prop_data["temperature_value_pairs"] = pairs
-
-                # Добавляем метаданные, если это новое свойство
                 if "property_name" not in prop_data:
                     prop_info = MECHANICAL_PROPERTIES_MAP[prop_key]
                     prop_data["property_name"] = prop_info["name"]
                     prop_data["property_unit"] = prop_info["unit"]
-
             elif prop_key in category_data:
                 del category_data[prop_key]
 
         hardness_list = []
         for item_id in self.hardness_tree.get_children():
-            values = self.hardness_tree.set(item_id)
+            v = self.hardness_tree.set(item_id)
             h_data = {
-                "property_source": values["source"],
-                "property_subsource": values["subsource"],
-                "unit_value": values["unit"]
+                "property_source": v["source"], "property_subsource": v["subsource"], "unit_value": v["unit"],
+                "min_value": None, "max_value": None
             }
             try:
-                h_data["min_value"] = float(values["min"]) if values["min"] else None
+                h_data["min_value"] = float(v["min"]) if v["min"] else None
             except ValueError:
-                h_data["min_value"] = None
+                pass
             try:
-                h_data["max_value"] = float(values["max"]) if values["max"] else None
+                h_data["max_value"] = float(v["max"]) if v["max"] else None
             except ValueError:
-                h_data["max_value"] = None
+                pass
 
-            # Сохраняем, только если есть хоть какие-то данные, кроме ед. изм.
-            if any(v for k, v in h_data.items() if k != 'unit_value' and v):
+            if h_data["property_source"] or h_data["property_subsource"] or h_data["min_value"] is not None or h_data[
+                "max_value"] is not None:
                 hardness_list.append(h_data)
-
         category_data["hardness"] = hardness_list
 
     def collect_data(self, material):
-        self._save_current_category()
-        self.material = material
+        """Собирает данные из формы перед сохранением или сменой материала."""
+        # Убеждаемся, что текущая редактируемая категория сохранена
+        if self.material == material:
+            self._save_current_category()
+        # self.material будет обновлен в populate_form, так что здесь менять не нужно.
 
 
 class Tooltip:
