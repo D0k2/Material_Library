@@ -595,6 +595,25 @@ class TempSelectionTab(ttk.Frame):
         except (IndexError, tk.TclError):
             pass
 
+class CustomToolbar(NavigationToolbar2Tk):
+    """
+    Пользовательская панель инструментов, которая при нажатии 'Home'
+    перерисовывает график, вызывая внешнюю функцию.
+    """
+    def __init__(self, canvas, window, plot_callback):
+        super().__init__(canvas, window)
+        # Сохраняем ссылку на нашу функцию для построения графика
+        self.plot_callback = plot_callback
+
+    def home(self, *args, **kwargs):
+        """
+        Переопределяем стандартное поведение кнопки 'Home'.
+        Вместо сброса вида, мы полностью перерисовываем график.
+        """
+        # Просто вызываем нашу функцию, которая всё сделает сама:
+        # очистит оси, получит данные и построит график.
+        self.plot_callback()
+
 
 class PropertyComparisonTab(ttk.Frame):
     """Вкладка 'Сравнение материалов (свойства)' с аннотациями и доп. сеткой."""
@@ -653,7 +672,7 @@ class PropertyComparisonTab(ttk.Frame):
         self.ax = fig.add_subplot(111)
         self.canvas = FigureCanvasTkAgg(fig, master=self.plot_frame)
 
-        toolbar = NavigationToolbar2Tk(self.canvas, self.plot_frame)
+        toolbar = CustomToolbar(self.canvas, self.plot_frame, plot_callback=self._plot_graph)
         toolbar.update()
         self.canvas.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=True)
 
@@ -705,10 +724,13 @@ class PropertyComparisonTab(ttk.Frame):
                         category_name = cat.get('value_strength_category', '')
                         display_name_with_cat = f"{material_name} {category_name}".strip()
                         self.mat_listbox.insert(tk.END, display_name_with_cat)
-                        self.listbox_item_map[display_name_with_cat] = (material_data, cat)
+
+                        # Вместо сохранения ссылки на 'cat', сохраняем его копию.
+                        # Это гарантирует, что данные для графика будут независимы.
+                        self.listbox_item_map[display_name_with_cat] = (material_data, cat.copy())
 
     def _add_minor_gridlines(self):
-        # ... (Код этой функции остается без изменений) ...
+
         x_ticks = self.ax.get_xticks()
         if len(x_ticks) > 1:
             for i in range(len(x_ticks) - 1):
