@@ -2494,8 +2494,6 @@ class MainApplication(tk.Tk):
         instr_window.title("Инструкция по использованию")
         instr_window.geometry("750x600")
         instr_window.minsize(500, 400)
-        instr_window.transient(self)
-        instr_window.grab_set()
         instruction_text = """
 1. НАЧАЛО РАБОТЫ
 
@@ -2599,7 +2597,6 @@ class MainApplication(tk.Tk):
         text_widget.config(state="disabled")
         ok_button = ttk.Button(instr_window, text="OK", command=instr_window.destroy)
         ok_button.pack(pady=(0, 10))
-        instr_window.wait_window()
 
     def show_change(self):
         """Отображает окно с инструкцией по использованию."""
@@ -2607,8 +2604,6 @@ class MainApplication(tk.Tk):
         instr_window.title("Список изменений")
         instr_window.geometry("750x600")
         instr_window.minsize(500, 400)
-        instr_window.transient(self)
-        instr_window.grab_set()
         instruction_text = """
 v2.00 2025.07.08 - Релизная:
 - Реализована работа с подбором материала:
@@ -2664,7 +2659,6 @@ v2.01 Изменения:
         text_widget.config(state="disabled")
         ok_button = ttk.Button(instr_window, text="OK", command=instr_window.destroy)
         ok_button.pack(pady=(0, 10))
-        instr_window.wait_window()
 
 if __name__ == "__main__":
     app = MainApplication()
