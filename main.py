@@ -911,8 +911,11 @@ class ChemComparisonTab(ttk.Frame):
 
     def _format_chem_value(self, elem_data):
         """
-        Форматирует значение химического элемента в строку.
-        Формат: (допуск_мин)мин_значение - макс_значение(допуск_макс)
+        Форматирует значение химического элемента в строку с учетом наличия
+        минимального и/или максимального значения.
+        - Если есть оба: (min_tol) min - max (max_tol)
+        - Если только max: ≤ max (max_tol)
+        - Если только min: ≥ min (min_tol)
         """
         if not elem_data:
             return "-"
@@ -922,21 +925,32 @@ class ChemComparisonTab(ttk.Frame):
         min_tol = elem_data.get("min_value_tolerance")
         max_tol = elem_data.get("max_value_tolerance")
 
-        parts = []
+        # Трактуем 0 как отсутствующее значение для более чистого отображения
+        if min_v == 0:
+            min_v = None
+        if max_v == 0:
+            max_v = None
 
-        # Формируем часть для минимального значения: (min_tol) min_value
-        if min_v is not None:
-            # Добавляем допуск в скобках, только если он существует (не None и не пустая строка)
+        # Случай 1: Есть и минимальное, и максимальное значение (диапазон)
+        if min_v is not None and max_v is not None:
             min_tol_str = f"({min_tol}) " if min_tol not in (None, '') else ""
-            parts.append(f"{min_tol_str}{min_v}")
-
-        # Формируем часть для максимального значения: max_value (max_tol)
-        if max_v is not None:
-            # Добавляем допуск в скобках, только если он существует
             max_tol_str = f" ({max_tol})" if max_tol not in (None, '') else ""
-            parts.append(f"{max_v}{max_tol_str}")
+            return f"{min_tol_str}{min_v} - {max_v}{max_tol_str}"
 
-        return " - ".join(parts) if parts else "-"
+        # Случай 2: Есть только максимальное значение (не более чем)
+        elif max_v is not None:
+            max_tol_str = f" ({max_tol})" if max_tol not in (None, '') else ""
+            return f"≤ {max_v}{max_tol_str}"
+
+        # Случай 3: Есть только минимальное значение (не менее чем)
+        elif min_v is not None:
+            # Обратите внимание на пробел до скобки для симметрии с max
+            min_tol_str = f" ({min_tol})" if min_tol not in (None, '') else ""
+            return f"≥ {min_v}{min_tol_str}"
+
+        # Случай 4: Значений нет
+        else:
+            return "-"
 
     def _setup_comparison_view(self, event=None):
         saved_filter_values = {elem: entry.get() for elem, entry in self.filter_entries.items() if entry.get()}
@@ -1388,9 +1402,9 @@ class PropertyEditorTab(ttk.Frame):
         # Передаем callback в create_editable_treeview
         tree = create_editable_treeview(table_frame, on_update_callback=on_update_callback)
         tree["columns"] = ("temp", "value")
-        tree.heading("temp", text="Температура, °C");
+        tree.heading("temp", text="Температура, °C")
         tree.column("temp", width=100)
-        tree.heading("value", text="Значение");
+        tree.heading("value", text="Значение")
         tree.column("value", width=100)
         tree.grid(row=0, column=0, sticky="nsew")
         widgets["tree"] = tree
@@ -1600,9 +1614,9 @@ class MechanicalPropertiesTab(ttk.Frame):
 
         tree = create_editable_treeview(table_frame, on_update_callback=on_update_callback)
         tree["columns"] = ("temp", "value")
-        tree.heading("temp", text="Температура, °C");
+        tree.heading("temp", text="Температура, °C")
         tree.column("temp", width=100)
-        tree.heading("value", text="Значение");
+        tree.heading("value", text="Значение")
         tree.column("value", width=100)
         tree.grid(row=0, column=0, sticky="nsew")
         widgets["tree"] = tree
@@ -1625,15 +1639,15 @@ class MechanicalPropertiesTab(ttk.Frame):
 
         tree = create_editable_treeview(table_frame)
         tree["columns"] = ("source", "subsource", "min", "max", "unit")
-        tree.heading("source", text="Источник");
+        tree.heading("source", text="Источник")
         tree.column("source", width=150)
-        tree.heading("subsource", text="Под-источник");
+        tree.heading("subsource", text="Под-источник")
         tree.column("subsource", width=100)
-        tree.heading("min", text="Min");
+        tree.heading("min", text="Min")
         tree.column("min", width=60)
-        tree.heading("max", text="Max");
+        tree.heading("max", text="Max")
         tree.column("max", width=60)
-        tree.heading("unit", text="Ед. изм.");
+        tree.heading("unit", text="Ед. изм.")
         tree.column("unit", width=60)
         tree.pack(side="left", fill="both", expand=True)
 
@@ -1684,11 +1698,11 @@ class MechanicalPropertiesTab(ttk.Frame):
 
         for prop_key, widgets in self.prop_widgets.items():
             prop_data = category_data.get(prop_key, {})
-            widgets["source"].delete(0, tk.END);
+            widgets["source"].delete(0, tk.END)
             widgets["source"].insert(0, prop_data.get("property_source", ""))
-            widgets["subsource"].delete(0, tk.END);
+            widgets["subsource"].delete(0, tk.END)
             widgets["subsource"].insert(0, prop_data.get("property_subsource", ""))
-            widgets["comment"].delete(0, tk.END);
+            widgets["comment"].delete(0, tk.END)
             widgets["comment"].insert(0, prop_data.get("comment", ""))
 
             tree = widgets["tree"]
@@ -1792,8 +1806,8 @@ class MechanicalPropertiesTab(ttk.Frame):
                     pairs.append([float(values["temp"]), float(values["value"])])
                 except (ValueError, KeyError, TypeError):
                     continue
-            source = widgets["source"].get();
-            subsource = widgets["subsource"].get();
+            source = widgets["source"].get()
+            subsource = widgets["subsource"].get()
             comment = widgets["comment"].get()
 
             if pairs or source or subsource or comment:
