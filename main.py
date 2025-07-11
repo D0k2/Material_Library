@@ -138,6 +138,7 @@ def find_changes(old_data, new_data, path=""):
     common_keys = old_keys & new_keys
 
     for key in added_keys:
+        # Для списков и словарей выводим их строковое представление
         changes.append(f"{path}{key}: [ДОБАВЛЕНО] -> '{new_copy[key]}'")
 
     for key in removed_keys:
@@ -148,18 +149,23 @@ def find_changes(old_data, new_data, path=""):
         new_val = new_copy[key]
         current_path = f"{path}{key} -> "
 
-        # Сравниваем JSON-представления для списков и словарей для надежности
-        if isinstance(old_val, (dict, list)) and isinstance(new_val, (dict, list)):
-            # Сортируем ключи в JSON для консистентного сравнения словарей
+        # --- НАЧАЛО ИЗМЕНЕНИЙ ---
+
+        # 1. Рекурсивно обрабатываем ТОЛЬКО вложенные словари
+        if isinstance(old_val, dict) and isinstance(new_val, dict):
+            # Сравниваем JSON-представления для надежности, так как порядок ключей в словаре не важен
             old_json = json.dumps(old_val, sort_keys=True, ensure_ascii=False)
             new_json = json.dumps(new_val, sort_keys=True, ensure_ascii=False)
             if old_json != new_json:
-                if isinstance(old_val, dict):
-                    changes.extend(find_changes(old_val, new_val, path=current_path))
-                else:  # для списков
-                    changes.append(f"{current_path[:-4]}: [ИЗМЕНЕН СПИСОК]")
+                changes.extend(find_changes(old_val, new_val, path=current_path))
+
+        # 2. Для всех остальных типов (включая СПИСКИ, строки, числа) используем прямое сравнение
         elif old_val != new_val:
+            # Python корректно сравнивает списки, и их строковое представление идеально подходит для лога.
+            # Эта ветка теперь обрабатывает и простые значения, и списки.
             changes.append(f"{current_path[:-4]}: [БЫЛО] '{old_val}' -> [СТАЛО] '{new_val}'")
+
+        # --- КОНЕЦ ИЗМЕНЕНИЙ ---
 
     return changes
 
