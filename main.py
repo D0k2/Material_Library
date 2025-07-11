@@ -863,16 +863,31 @@ class ChemComparisonTab(ttk.Frame):
         scrollable_container.pack(fill="both", expand=True)
         scrollable_container.grid_rowconfigure(0, weight=1)
         scrollable_container.grid_columnconfigure(0, weight=1)
-        canvas = tk.Canvas(scrollable_container)
-        canvas.grid(row=0, column=0, sticky="nsew")
-        vsb = ttk.Scrollbar(scrollable_container, orient="vertical", command=canvas.yview)
+        self.canvas = tk.Canvas(scrollable_container)
+        self.canvas.grid(row=0, column=0, sticky="nsew")
+        vsb = ttk.Scrollbar(scrollable_container, orient="vertical", command=self.canvas.yview)
         vsb.grid(row=0, column=1, sticky="ns")
-        hsb = ttk.Scrollbar(scrollable_container, orient="horizontal", command=canvas.xview)
+        hsb = ttk.Scrollbar(scrollable_container, orient="horizontal", command=self.canvas.xview)
         hsb.grid(row=1, column=0, sticky="ew")
-        canvas.configure(yscrollcommand=vsb.set, xscrollcommand=hsb.set)
-        self.results_grid_frame = ttk.Frame(canvas)
-        canvas.create_window((0, 0), window=self.results_grid_frame, anchor="nw")
-        self.results_grid_frame.bind("<Configure>", lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
+        self.canvas.configure(yscrollcommand=vsb.set, xscrollcommand=hsb.set)
+        self.results_grid_frame = ttk.Frame(self.canvas)
+        self.canvas.create_window((0, 0), window=self.results_grid_frame, anchor="nw")
+        self.results_grid_frame.bind("<Configure>", lambda e: self.canvas.configure(scrollregion=self.canvas.bbox("all"))) # Убедитесь, что эта строка использует self.canvas
+
+        # Привязываем прокрутку к самому canvas и к фрейму внутри него
+        for widget in (self.canvas, self.results_grid_frame):
+            widget.bind("<MouseWheel>", self._on_mousewheel)
+            # Для совместимости с Linux
+            widget.bind("<Button-4>", self._on_mousewheel)
+            widget.bind("<Button-5>", self._on_mousewheel)
+
+    def _on_mousewheel(self, event):
+        """Обрабатывает прокрутку колесиком мыши для canvas."""
+        # Для Windows/macOS event.delta, для Linux event.num
+        if event.num == 4 or event.delta > 0:
+            self.canvas.yview_scroll(-1, "units")
+        elif event.num == 5 or event.delta < 0:
+            self.canvas.yview_scroll(1, "units")
 
     def update_lists(self):
         # Эта строка может вызвать ошибку, если self.app_data.application_areas не существует.
@@ -1041,22 +1056,42 @@ class ChemComparisonTab(ttk.Frame):
         for row, comp_data in enumerate(data_to_show, start=1):
             row_bg_color = "honeydew" if comp_data.get('is_match', True) else "misty rose"
 
-            tk.Label(self.results_grid_frame, text=comp_data["material_name"], relief="groove", padx=5, pady=5,
-                     background=row_bg_color).grid(row=row, column=0, sticky="nsew")
-            tk.Label(self.results_grid_frame, text=comp_data["source"], relief="groove", padx=5, pady=5,
-                     background=row_bg_color).grid(row=row, column=1, sticky="nsew")
-            tk.Label(self.results_grid_frame, text=comp_data["base_element"], anchor="center", relief="groove", padx=5,
-                     pady=5, background=row_bg_color).grid(row=row, column=2, sticky="nsew")
+            # Создаем ячейки и сразу привязываем к ним событие
+            l1 = tk.Label(self.results_grid_frame, text=comp_data["material_name"], relief="groove", padx=5, pady=5,
+                          background=row_bg_color)
+            l1.grid(row=row, column=0, sticky="nsew")
+            l1.bind("<MouseWheel>", self._on_mousewheel)
+            l1.bind("<Button-4>", self._on_mousewheel)
+            l1.bind("<Button-5>", self._on_mousewheel)
+
+            l2 = tk.Label(self.results_grid_frame, text=comp_data["source"], relief="groove", padx=5, pady=5,
+                          background=row_bg_color)
+            l2.grid(row=row, column=1, sticky="nsew")
+            l2.bind("<MouseWheel>", self._on_mousewheel)
+            l2.bind("<Button-4>", self._on_mousewheel)
+            l2.bind("<Button-5>", self._on_mousewheel)
+
+            l3 = tk.Label(self.results_grid_frame, text=comp_data["base_element"], anchor="center", relief="groove",
+                          padx=5, pady=5, background=row_bg_color)
+            l3.grid(row=row, column=2, sticky="nsew")
+            l3.bind("<MouseWheel>", self._on_mousewheel)
+            l3.bind("<Button-4>", self._on_mousewheel)
+            l3.bind("<Button-5>", self._on_mousewheel)
+            # --- КОНЕЦ ИЗМЕНЕНИЙ ---
 
             for col, elem_name in enumerate(self.sorted_elements, start=3):
                 elem_info = comp_data["elements_map"].get(elem_name)
                 text_val = self._format_chem_value(elem_info)
-
                 cell_bg_color = comp_data.get("cell_colors", {}).get(elem_name, row_bg_color)
 
                 cell = tk.Label(self.results_grid_frame, text=text_val, background=cell_bg_color, relief="groove",
                                 padx=5, pady=5)
                 cell.grid(row=row, column=col, sticky="nsew")
+
+                # --- ДОБАВЛЕНИЕ ЗДЕСЬ ---
+                cell.bind("<MouseWheel>", self._on_mousewheel)
+                cell.bind("<Button-4>", self._on_mousewheel)
+                cell.bind("<Button-5>", self._on_mousewheel)
 
 
 # --- Классы для вкладки "Редактор" ---
