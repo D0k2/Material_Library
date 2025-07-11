@@ -856,7 +856,9 @@ class ChemComparisonTab(ttk.Frame):
         self.results_grid_frame.bind("<Configure>", lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
 
     def update_lists(self):
-        self.area_combo.config(values=["Все"] + self.app_data.application_areas)
+        # Эта строка может вызвать ошибку, если self.app_data.application_areas не существует.
+        # Убедитесь, что `app_data` имеет нужный атрибут.
+        self.area_combo.config(values=["Все"] + getattr(self.app_data, 'application_areas', []))
         self.area_combo.set("Все")
         self._filter_materials()
         self._setup_comparison_view()
@@ -866,28 +868,40 @@ class ChemComparisonTab(ttk.Frame):
         selected_area = self.area_combo.get()
 
         for mat in self.app_data.materials:
-            # ПРОВЕРКА 1: Фильтруем по области применения
             if selected_area != "Все" and selected_area not in mat.data.get("metadata", {}).get("application_area", []):
-                continue  # Пропускаем материал, если область не совпадает
-
-            # ПРОВЕРКА 2: Проверяем, есть ли у материала данные о хим. составе
-            # Условие сработает, если chemical_properties существует и список composition не пустой
+                continue
             if mat.data.get("chemical_properties", {}).get("composition"):
-                # Если обе проверки пройдены, добавляем материал в список
                 self.mat_listbox.insert(tk.END, mat.get_display_name())
 
-        # После заполнения списка обновляем вид сравнения
         self._setup_comparison_view()
 
     def _format_chem_value(self, elem_data):
-        if not elem_data: return "-"
-        min_v, max_v = elem_data.get("min_value"), elem_data.get("max_value")
-        min_tol, max_tol = elem_data.get("min_value_tolerance"), elem_data.get("max_value_tolerance")
+        """
+        Форматирует значение химического элемента в строку.
+        Формат: (допуск_мин)мин_значение - макс_значение(допуск_макс)
+        """
+        if not elem_data:
+            return "-"
+
+        min_v = elem_data.get("min_value")
+        max_v = elem_data.get("max_value")
+        min_tol = elem_data.get("min_value_tolerance")
+        max_tol = elem_data.get("max_value_tolerance")
+
         parts = []
+
+        # Формируем часть для минимального значения: (min_tol) min_value
         if min_v is not None:
-            parts.append(f"{min_v}" + (f" ({min_tol})" if min_tol else ""))
+            # Добавляем допуск в скобках, только если он существует (не None и не пустая строка)
+            min_tol_str = f"({min_tol}) " if min_tol not in (None, '') else ""
+            parts.append(f"{min_tol_str}{min_v}")
+
+        # Формируем часть для максимального значения: max_value (max_tol)
         if max_v is not None:
-            parts.append(f"{max_v}" + (f" ({max_tol})" if max_tol else ""))
+            # Добавляем допуск в скобках, только если он существует
+            max_tol_str = f" ({max_tol})" if max_tol not in (None, '') else ""
+            parts.append(f"{max_v}{max_tol_str}")
+
         return " - ".join(parts) if parts else "-"
 
     def _setup_comparison_view(self, event=None):
@@ -958,25 +972,19 @@ class ChemComparisonTab(ttk.Frame):
                 min_tol_str = elem_info.get("min_value_tolerance")
                 max_tol_str = elem_info.get("max_value_tolerance")
 
-                # Определяем нижнюю границу
-                # По умолчанию - бесконечность. Если есть min_v, используем его.
                 lower_bound = float('-inf') if min_v is None else min_v
-                # Если есть min_value_tolerance, он имеет приоритет и заменяет min_v
                 if min_tol_str not in (None, ''):
                     try:
                         lower_bound = float(min_tol_str)
                     except (ValueError, TypeError):
-                        pass  # Если допуск нечисловой, оставляем значение из min_v
+                        pass
 
-                # Определяем верхнюю границу
-                # По умолчанию - бесконечность. Если есть max_v, используем его.
                 upper_bound = float('inf') if max_v is None else max_v
-                # Если есть max_value_tolerance, он имеет приоритет и заменяет max_v
                 if max_tol_str not in (None, ''):
                     try:
                         upper_bound = float(max_tol_str)
                     except (ValueError, TypeError):
-                        pass  # Если допуск нечисловой, оставляем значение из max_v
+                        pass
 
 
                 if lower_bound <= target_val <= upper_bound:
