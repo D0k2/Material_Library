@@ -2346,7 +2346,7 @@ class MainApplication(tk.Tk):
     def __init__(self):
         super().__init__()
         self.app_data = AppData()
-        self.title("База данных материалов")
+        self.title("Material_Lib")
         self.geometry("1200x800")
         self.create_menu()
         self.create_widgets()
@@ -2495,9 +2495,9 @@ class MainApplication(tk.Tk):
         """Отображает окно 'О приложении'."""
         title = "О приложении"
         message = (
-            "База данных материалов\n\n"
+            "Приложение \"Material_Lib\"\n\n"
             "Версия: 2.01\n"
-            "Год: 2025.07.11\n\n"
+            "Год: 2025.07.15\n\n"
             "Промт-инженер: Гаврилов П.Я.\n"
             "Тестировщик: Лалаева С.Г.\n"
             "AI ассистент (кодогенерирующий): gemini-2.5-pro\n\n"
@@ -2664,6 +2664,10 @@ v2.01 Изменения:
 Исправления:
 - Исправлена работа приложения с открытой инструкцией, окно приложения больше не блокируется
 - Исправлено отображение мех. свойств на графике при нажатии на "домик" в области "Сравнение материалов (свойства)"
+
+2025.07.15
+Исправления:
+- Исключен файл "application_area.txt"
 """
         text_frame = ttk.Frame(instr_window, padding=10)
         text_frame.pack(fill="both", expand=True)
