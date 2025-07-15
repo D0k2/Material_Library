@@ -321,26 +321,22 @@ class AppData:
 
     # ИЗМЕНИТЕ ЭТОТ МЕТОД:
     def load_application_areas(self):
+        """
+        Динамически собирает все уникальные области применения
+        из загруженных материалов.
+        """
         self.application_areas.clear()
+        all_areas = set()
 
-        # --- НАЧАЛО ИЗМЕНЕНИЙ ---
-        # Получаем путь к директории приложения
-        app_dir = get_app_directory()
-        filepath = os.path.join(app_dir, "application_area.txt")
-        # --- КОНЕЦ ИЗМЕНЕНИЙ ---
+        for material in self.materials:
+            # Безопасно получаем список областей для текущего материала
+            areas_for_material = material.data.get("metadata", {}).get("application_area", [])
+            if areas_for_material:
+                # Добавляем все элементы из списка в set, дубликаты игнорируются
+                all_areas.update(areas_for_material)
 
-        if os.path.exists(filepath):
-            try:
-                with open(filepath, 'r', encoding='utf-8') as f:
-                    # Убираем пустые строки и лишние пробелы по краям
-                    self.application_areas = [line.strip() for line in f if line.strip()]
-            except Exception as e:
-                # Добавим обработку ошибки чтения файла
-                messagebox.showerror("Ошибка чтения", f"Не удалось прочитать файл 'application_area.txt':\n{e}")
-        else:
-            # Предупреждение о том, что файл не найден в директории приложения
-            messagebox.showwarning("Файл не найден",
-                                   f"Файл 'application_area.txt' не найден в директории приложения:\n{app_dir}")
+        # Сортируем уникальные области по алфавиту и сохраняем
+        self.application_areas = sorted(list(all_areas))
 
 
 # --- Классы для вкладки "Подбор материала" ---
@@ -1214,70 +1210,74 @@ class GeneralDataTab(ttk.Frame):
         self._setup_widgets()
 
     def _setup_widgets(self):
-        # Main Grid
+        # Виджеты остаются точно такими же, как в предыдущей версии.
+        # Этот метод не меняется.
         self.columnconfigure(1, weight=1)
-
-        # Name, Alternatives, Comment
         ttk.Label(self, text="Наименование (стандарт):").grid(row=0, column=0, sticky="w", pady=2)
         self.name_entry = ttk.Entry(self, width=60)
         self.name_entry.grid(row=0, column=1, sticky="we", pady=2)
-
         ttk.Label(self, text="Альтернативные названия\n(каждое с новой строки):").grid(row=1, column=0, sticky="nw",
                                                                                        pady=2)
         self.alt_text = tk.Text(self, height=4, width=60)
         self.alt_text.grid(row=1, column=1, sticky="we", pady=2)
-
         ttk.Label(self, text="Комментарий:").grid(row=2, column=0, sticky="nw", pady=2)
         self.comment_text = tk.Text(self, height=4, width=60)
         self.comment_text.grid(row=2, column=1, sticky="we", pady=2)
-
-        # Classification
         class_frame = ttk.LabelFrame(self, text="Классификация", padding=5)
         class_frame.grid(row=3, column=0, columnspan=2, sticky="we", pady=10)
         class_frame.columnconfigure(1, weight=1)
-
         ttk.Label(class_frame, text="Категория:").grid(row=0, column=0, sticky="w")
         self.cat_entry = ttk.Entry(class_frame)
         self.cat_entry.grid(row=0, column=1, sticky="we", padx=5)
-
         ttk.Label(class_frame, text="Класс:").grid(row=1, column=0, sticky="w")
         self.class_entry = ttk.Entry(class_frame)
         self.class_entry.grid(row=1, column=1, sticky="we", padx=5)
-
         ttk.Label(class_frame, text="Подкласс:").grid(row=2, column=0, sticky="w")
         self.subclass_entry = ttk.Entry(class_frame)
         self.subclass_entry.grid(row=2, column=1, sticky="we", padx=5)
-
-        # Application Area
-        area_frame = ttk.LabelFrame(self, text="Области применения (выберите несколько)", padding=5)
+        area_frame = ttk.LabelFrame(self, text="Области применения", padding=5)
         area_frame.grid(row=4, column=0, columnspan=2, sticky="we", pady=10)
-        self.area_listbox = tk.Listbox(area_frame, selectmode=tk.MULTIPLE, height=6)
-        area_scrollbar = ttk.Scrollbar(area_frame, orient="vertical", command=self.area_listbox.yview)
+        listbox_frame = ttk.Frame(area_frame)
+        listbox_frame.pack(fill="both", expand=True, pady=(0, 5))
+        self.area_listbox = tk.Listbox(listbox_frame, selectmode=tk.MULTIPLE, height=6)
+        area_scrollbar = ttk.Scrollbar(listbox_frame, orient="vertical", command=self.area_listbox.yview)
         self.area_listbox.config(yscrollcommand=area_scrollbar.set)
         area_scrollbar.pack(side="right", fill="y")
         self.area_listbox.pack(side="left", fill="both", expand=True)
+        add_area_frame = ttk.Frame(area_frame)
+        add_area_frame.pack(fill="x", expand=True, pady=(5, 0))
+        self.new_area_entry = ttk.Entry(add_area_frame)
+        self.new_area_entry.pack(side="left", fill="x", expand=True, padx=(0, 5))
+        add_button = ttk.Button(add_area_frame, text="Добавить", command=self._add_new_area)
+        add_button.pack(side="left")
 
-    def _select_areas_in_listbox(self, areas_to_select):
-        """
-        Выделяет элементы в Listbox. Этот метод вызывается с задержкой,
-        чтобы гарантировать, что виджет готов к выделению.
-        """
-        for i in range(self.area_listbox.size()):
-            if self.area_listbox.get(i) in areas_to_select:
-                self.area_listbox.selection_set(i)
+    def _add_new_area(self):
+        # Этот метод не меняется.
+        new_area = self.new_area_entry.get().strip()
+        if not new_area:
+            return
+        current_items = self.area_listbox.get(0, tk.END)
+        if new_area in current_items:
+            messagebox.showinfo("Информация", f"Область '{new_area}' уже есть в списке.", parent=self)
+            return
+        self.area_listbox.insert(tk.END, new_area)
+        self.area_listbox.see(tk.END)
+        self.area_listbox.selection_set(tk.END)
+        self.new_area_entry.delete(0, tk.END)
 
     def populate_form(self, material):
+        """
+        Заполняет форму данными. Логика для "Областей применения" изменена
+        для динамического сбора данных при каждом вызове.
+        """
+        # --- Заполнение стандартных полей (без изменений) ---
         meta = material.data.get("metadata", {})
-        # ... (весь ваш код для name_entry, alt_text, comment_text, class_entry и т.д. остается здесь без изменений) ...
         self.name_entry.delete(0, tk.END)
         self.name_entry.insert(0, meta.get("name_material_standard", ""))
-
         self.alt_text.delete("1.0", tk.END)
         self.alt_text.insert("1.0", "\n".join(meta.get("name_material_alternative", [])))
-
         self.comment_text.delete("1.0", tk.END)
         self.comment_text.insert("1.0", meta.get("comment", ""))
-
         cls = meta.get("classification", {})
         self.cat_entry.delete(0, tk.END)
         self.cat_entry.insert(0, cls.get("classification_category", ""))
@@ -1286,40 +1286,52 @@ class GeneralDataTab(ttk.Frame):
         self.subclass_entry.delete(0, tk.END)
         self.subclass_entry.insert(0, cls.get("classification_subclass", ""))
 
-        # --- Блок для областей применения с update_idletasks() ---
+        # --- НАЧАЛО ИЗМЕНЕНИЙ: Динамическое формирование списка областей ---
+
+        # 1. Очищаем список перед заполнением
         self.area_listbox.delete(0, tk.END)
 
-        mat_areas_set = set(meta.get("application_area", []))
+        # 2. Сохраняем области, которые уже присвоены ТЕКУЩЕМУ материалу.
+        #    Они понадобятся нам для последующего выделения в списке.
+        current_material_areas = set(meta.get("application_area", []))
 
-        all_possible_areas = set(self.app_data.application_areas)
-        all_possible_areas.update(mat_areas_set)
+        # 3. Динамически собираем ПОЛНЫЙ список областей из ВСЕХ материалов в app_data.
+        #    Это гарантирует, что список всегда актуален на момент выбора.
+        all_known_areas = set()
+        for mat_from_db in self.app_data.materials:
+            areas = mat_from_db.data.get("metadata", {}).get("application_area", [])
+            all_known_areas.update(areas)
 
-        sorted_areas = sorted(list(all_possible_areas))
+        # 4. Добавляем в общий список области текущего редактируемого материала.
+        #    Это важно, если пользователь добавил новую область, но еще не сохранил файл.
+        all_known_areas.update(current_material_areas)
 
-        # 1. Заполняем Listbox
+        # 5. Сортируем и заполняем Listbox
+        sorted_areas = sorted(list(all_known_areas))
         for area in sorted_areas:
             self.area_listbox.insert(tk.END, area)
 
-        # 2. ПРИНУДИТЕЛЬНО обновляем интерфейс, чтобы все вставки обработались
+        # 6. Выделяем в списке те области, которые относятся к текущему материалу.
+        #    `update_idletasks` нужен, чтобы гарантировать, что Tkinter успел
+        #    отрисовать элементы перед тем, как мы попытаемся их выделить.
         self.update_idletasks()
-
-        # 3. Теперь, когда Listbox гарантированно обновлен, выделяем элементы
         for i in range(self.area_listbox.size()):
-            if self.area_listbox.get(i) in mat_areas_set:
+            if self.area_listbox.get(i) in current_material_areas:
                 self.area_listbox.selection_set(i)
 
+        # --- КОНЕЦ ИЗМЕНЕНИЙ ---
+
     def collect_data(self, material):
+        # Этот метод не меняется, он уже работает корректно.
         meta = material.data["metadata"]
         meta["name_material_standard"] = self.name_entry.get()
         meta["name_material_alternative"] = [line for line in self.alt_text.get("1.0", tk.END).split("\n") if
                                              line.strip()]
         meta["comment"] = self.comment_text.get("1.0", tk.END).strip()
-
         cls = meta["classification"]
         cls["classification_category"] = self.cat_entry.get()
         cls["classification_class"] = self.class_entry.get()
         cls["classification_subclass"] = self.subclass_entry.get()
-
         selected_indices = self.area_listbox.curselection()
         meta["application_area"] = [self.area_listbox.get(i) for i in selected_indices]
 
